@@ -50,6 +50,90 @@ void readSecretKey(SecretKey& secretKey, std::string filename) {
 	fin.close();
 }
 
+void g4(Scheme& scheme, Ciphertext& gx, Ciphertext& x, long logp) {
+    //                        x^1      x^3      x^5      x^7        x^9                            
+    vector<double> coeffs = { 5.71289, -34.1543, 94.7412, -110.83203, 45.530273 };
+    std::cout << "g4 START x (logq, logq) = " << "(" << x.logq << ", " << x.logp << ")" << std::endl;
+    Ciphertext term, x2, x3;
+    scheme.square(x2, x);
+    scheme.reScaleByAndEqual(x2, logp);
+    scheme.mult(x3, x2, x);
+    scheme.reScaleByAndEqual(x3, logp);
+
+    scheme.modDownByAndEqual(x, logp);
+    scheme.modDownByAndEqual(x, logp);
+
+    scheme.multByConst(gx, x3, coeffs[4], logp);
+    scheme.reScaleByAndEqual(gx, logp);
+    scheme.multByConst(term, x, coeffs[3], logp);
+
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(gx, term);
+    scheme.multAndEqual(gx, x3);
+    scheme.reScaleByAndEqual(gx, logp);
+
+    scheme.modDownByAndEqual(x2, logp);
+    scheme.modDownByAndEqual(x2, logp);
+    scheme.multByConst(term, x2, coeffs[2], logp);
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(gx, term);
+
+    scheme.addConstAndEqual(gx, coeffs[1], logp);
+
+    scheme.multAndEqual(gx, x3);
+    scheme.reScaleByAndEqual(gx, logp);
+
+    scheme.modDownByAndEqual(x, logp);
+    scheme.modDownByAndEqual(x, logp);
+    scheme.multByConst(term, x, coeffs[0], logp);
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(gx, term);
+
+    std::cout << "END gx (logq, logq) = " << "(" << gx.logq << ", " << gx.logp << ")" << std::endl;
+}
+
+void f4(Scheme& scheme, Ciphertext& fx, Ciphertext& x, long logp) {
+    //                        x^1        x^3      x^5       x^7      x^9                            
+    vector<double> coeffs = { 2.4609375, 3.28125, 2.953125, 1.40625, 0.2734375 };
+    std::cout << "f4 START x (logq, logq) = " << "(" << x.logq << ", " << x.logp << ")" << std::endl;
+    Ciphertext term, x2, x3;
+    scheme.square(x2, x);
+    scheme.reScaleByAndEqual(x2, logp);
+    scheme.mult(x3, x2, x);
+    scheme.reScaleByAndEqual(x3, logp);
+
+    scheme.modDownByAndEqual(x, logp);
+    scheme.modDownByAndEqual(x, logp);
+
+    scheme.multByConst(fx, x3, coeffs[4], logp);
+    scheme.reScaleByAndEqual(fx, logp);
+    scheme.multByConst(term, x, coeffs[3], logp);
+
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(fx, term);
+    scheme.multAndEqual(fx, x3);
+    scheme.reScaleByAndEqual(fx, logp);
+
+    scheme.modDownByAndEqual(x2, logp);
+    scheme.modDownByAndEqual(x2, logp);
+    scheme.multByConst(term, x2, coeffs[2], logp);
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(fx, term);
+
+    scheme.addConstAndEqual(fx, coeffs[1], logp);
+
+    scheme.multAndEqual(fx, x3);
+    scheme.reScaleByAndEqual(fx, logp);
+
+    scheme.modDownByAndEqual(x, logp);
+    scheme.modDownByAndEqual(x, logp);
+    scheme.multByConst(term, x, coeffs[0], logp);
+    scheme.reScaleByAndEqual(term, logp);
+    scheme.addAndEqual(fx, term);
+
+    std::cout << "f4 END fx (logq, logq) = " << "(" << fx.logq << ", " << fx.logp << ")" << std::endl;
+}
+
 // Future suggestions:
 // Can use Paterson-Stockmeyer method to achieve optimal computation complexity
 // On the Number of Nonscalar Multiplications Necessary to Evaluate Polynomials
@@ -131,7 +215,7 @@ void keygen(std::string secretKeyPath, std::string multKeyPath, std::string encK
     SerializationUtils::writeKey(scheme.keyMap.at(ENCRYPTION), encKeyPath);
 }
 
-void encryptValue(double value, std::string encKeyPath, std::string ciphertextPath) {
+void encryptSingle(double value, std::string encKeyPath, std::string ciphertextPath) {
     // Seed random number generator
     std::uniform_int_distribution<unsigned int> dist(0, UINT_MAX);
     std::random_device urandom("/dev/urandom");
@@ -147,6 +231,31 @@ void encryptValue(double value, std::string encKeyPath, std::string ciphertextPa
     double* data = new double[constants::SLOTS];
     for (int i = 0; i < constants::SLOTS; i++) {
         data[i] = value;
+    }
+
+    // Perform encryption
+    Ciphertext cipher;
+    scheme.encrypt(cipher, data, constants::NN, constants::LOGP, constants::LOGQ);
+    SerializationUtils::writeCiphertext(cipher, ciphertextPath);
+    delete[] data;
+}
+
+void encryptMany(std::vector<double> values, std::string encKeyPath, std::string ciphertextPath) {
+    // Seed random number generator
+    std::uniform_int_distribution<unsigned int> dist(0, UINT_MAX);
+    std::random_device urandom("/dev/urandom");
+    srand(dist(urandom));
+    SetNumThreads(constants::NUM_THREADS);
+
+    // Read in encryption key
+    Ring ring;
+    Key* encKey = SerializationUtils::readKey(encKeyPath);
+    Scheme scheme(ring, encKey, nullptr);
+
+    // Set all slots to value
+    double* data = new double[constants::SLOTS];
+    for (int i = 0; i < constants::SLOTS; i++) {
+        data[i] = values[i];
     }
 
     // Perform encryption
@@ -218,12 +327,40 @@ void comparison(std::vector<double> featureValues, std::string inCipherPath, std
     SerializationUtils::writeCiphertext(x, outCipherPath);
 }
 
+void test(std::string inCipherPath, std::string encKeyPath, std::string multKeyPath) {
+    std::uniform_int_distribution<unsigned int> dist(0, UINT_MAX);
+    std::random_device urandom("/dev/urandom");
+    srand(dist(urandom));
+    SetNumThreads(constants::NUM_THREADS);
+    // Need both encryption key and multiplication key
+    Ring ring;
+    Key* encKey = SerializationUtils::readKey(encKeyPath);
+    Key* multKey = SerializationUtils::readKey(multKeyPath);
+    Scheme scheme(ring, encKey, multKey);
+    
+    // Cannot declare default ciphertext and then try to assign like:
+    // Ciphertext x1;
+    // x1 = SerializationUtils::readCiphertext(ciphertextPath);
+    // ^^^^^ BAD!!!! ^^^^^^
+    // Have to do this in one line or it will seg fault
+    Ciphertext* inCtxt = SerializationUtils::readCiphertext(inCipherPath);
+    Ciphertext x, g4x;
+    x.copy(*inCtxt);
+    g4(scheme, g4x, x, constants::LOGP);
+
+    SerializationUtils::writeCiphertext(g4x, "ciphertexts/g4test.ctxt");
+}
+
+// void secure_branch(std::vector<double> featureValues, std::string inCipherPath, std::string outCipherPath, std::string encKeyPath, std::string multKeyPath)
+
 // Module name needs to be same name as file
 PYBIND11_MODULE(seccomp, m) {
     m.doc() = "pybind11 example plugin"; // optional module docstring
 
     m.def("compare", &comparison, "");
     m.def("keygen", &keygen, "");
-    m.def("encryptValue", &encryptValue, "");
+    m.def("encryptSingle", &encryptSingle, "");
+    m.def("encryptMany", &encryptMany, "");
     m.def("decrypt", &decrypt, "");
+    m.def("test", &test, "");
 }
