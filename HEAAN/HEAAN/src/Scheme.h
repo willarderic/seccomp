@@ -42,6 +42,7 @@ public:
 
 	Scheme(SecretKey& secretKey, Ring& ring, bool isSerialized = false);
 	Scheme(Ring& ring, Key* encKey, Key* multKey);
+	Scheme(Ring& ring, Key* encKey, Key* multKey, Key** rotLeftKeys, const long R[16]);
 
 	virtual ~Scheme();
 

@@ -29,6 +29,15 @@ Scheme::Scheme(Ring& ring, Key* encKey, Key* multKey) : ring(ring) {
 	isSerialized = false;
 }
 
+Scheme::Scheme(Ring& ring, Key* encKey, Key* multKey, Key** rotLeftKeys, const long R[16]) : ring(ring) {
+	keyMap.insert(pair<long, Key*>(ENCRYPTION, encKey));
+	keyMap.insert(pair<long, Key*>(MULTIPLICATION, multKey));
+	for (int i = 0; i < 16; ++i) {
+		leftRotKeyMap.insert(pair<long, Key*>(R[i], rotLeftKeys[i]));
+	}
+	isSerialized = false;
+}
+
 Scheme::~Scheme() {
   for (auto const& t : keyMap)
 	delete t.second;
