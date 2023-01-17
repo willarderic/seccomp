@@ -23,11 +23,11 @@ namespace constants {
     // Parameters for HEAAN //
     const long CIRCUIT_DEPTH = 5;
     const long LOGP = 40; ///< scaling factor log ∆
-    const long LOGQ = (LOGP * CIRCUIT_DEPTH) * (D_F + D_G) + 2 * LOGP + 10; ///< Ciphertext modulus
+    const long LOGQ = ((LOGP * CIRCUIT_DEPTH) * (D_F + D_G) + LOGP + 10) + (LOGP * 3); ///< Ciphertext modulus
     const long LOGN = 16; ///< number of slots (2^16 = 65536)
     const long NN = 1 << LOGN;
     const long SLOTS = NN;
-    const long NUM_THREADS = 8;
+    const long NUM_THREADS = 16;
     const long R[16] = { 32768, 49152, 57344, 61440, 63488, 64512, 65024, 65280, 65408, 65472, 65504, 65520, 65528, 65532, 65534, 65535 };
 }
 
@@ -53,10 +53,27 @@ void readSecretKey(SecretKey& secretKey, std::string filename) {
 	fin.close();
 }
 
+void decryptAndPrint(Ciphertext& cipher, int n) {
+    Ring ring;
+    SecretKey secretKey(ring);
+    Scheme scheme(ring, nullptr, nullptr);
+    readSecretKey(secretKey, "keys/secret.key");
+    // Read in ciphertext
+    // HEAAN represents values as complex numbers
+    // Decrypt and extract the real number parts
+    std::vector<double> decryptedValuesReal;
+    decryptedValuesReal.reserve(constants::SLOTS);
+    complex<double>* decryptedValues = scheme.decrypt(secretKey, cipher);
+    std::cout << "-----------------------" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::cout << "[" << i << "] = " << decryptedValues[i].real() << std::endl;
+    }
+    std::cout << "-----------------------" << std::endl;
+}
+
 void g4(Scheme& scheme, Ciphertext& gx, Ciphertext& x, long logp) {
     //                        x^1      x^3       x^5      x^7         x^9                            
     vector<double> coeffs = { 5.71289, -34.1543, 94.7412, -110.83203, 45.530273 };
-    std::cout << "g4 START x (logq, logq) = " << "(" << x.logq << ", " << x.logp << ")" << std::endl;
     Ciphertext term, x2, x3;
     scheme.square(x2, x);
     scheme.reScaleByAndEqual(x2, logp);
@@ -91,14 +108,11 @@ void g4(Scheme& scheme, Ciphertext& gx, Ciphertext& x, long logp) {
     scheme.multByConst(term, x, coeffs[0], logp);
     scheme.reScaleByAndEqual(term, logp);
     scheme.addAndEqual(gx, term);
-
-    std::cout << "g4 END gx (logq, logq) = " << "(" << gx.logq << ", " << gx.logp << ")" << std::endl;
 }
 
 void f4(Scheme& scheme, Ciphertext& fx, Ciphertext& x, long logp) {
     //                        x^1        x^3       x^5       x^7       x^9                            
     vector<double> coeffs = { 2.4609375, -3.28125, 2.953125, -1.40625, 0.2734375 };
-    std::cout << "f4 START x (logq, logq) = " << "(" << x.logq << ", " << x.logp << ")" << std::endl;
     Ciphertext term, x2, x3;
     scheme.square(x2, x);
     scheme.reScaleByAndEqual(x2, logp);
@@ -133,8 +147,6 @@ void f4(Scheme& scheme, Ciphertext& fx, Ciphertext& x, long logp) {
     scheme.multByConst(term, x, coeffs[0], logp);
     scheme.reScaleByAndEqual(term, logp);
     scheme.addAndEqual(fx, term);
-
-    std::cout << "f4 END fx (logq, logq) = " << "(" << fx.logq << ", " << fx.logp << ")" << std::endl;
 }
 
 void keygen(std::string secretKeyPath, std::string multKeyPath, std::string encKeyPath, std::string rotKeyPath) {
@@ -151,14 +163,10 @@ void keygen(std::string secretKeyPath, std::string multKeyPath, std::string encK
 
     // Save all keys to files
     writeSecretKey(secretKey, secretKeyPath);
-    std::cout << "leftRotKeyMap.size() = " << scheme.leftRotKeyMap.size() << std::endl;
     scheme.addRightRotKeys(secretKey);
-    std::cout << "leftRotKeyMap.size() = " << scheme.leftRotKeyMap.size() << std::endl;
     SerializationUtils::writeKey(scheme.keyMap.at(MULTIPLICATION), multKeyPath);
     SerializationUtils::writeKey(scheme.keyMap.at(ENCRYPTION), encKeyPath);
-    for (auto it = scheme.leftRotKeyMap.begin(); it != scheme.leftRotKeyMap.end(); it++) {
-        std::cout << "(" << it->first << ", " << it->second->rax[0] << ")" << std::endl;
-    }
+
     for (int i = 0; i < 16; i++) {
         stringstream s;
         s << rotKeyPath << constants::R[i] << ".key";
@@ -284,7 +292,7 @@ void comparison(std::vector<double> featureValues, std::string inCipherPath, std
     SerializationUtils::writeCiphertext(x, outCipherPath);
 }
 
-void pdte(std::string inCipherPath, std::string outCipherPath, std::string encKeyPath, std::string multKeyPath, std::string rotKeyPath, std::string secretKeyPath) {
+void depthFiveMult(std::string inCipherPath, std::string outCipherPath, std::string encKeyPath, std::string multKeyPath, std::string rotKeyPath, std::string secretKeyPath) {
     std::uniform_int_distribution<unsigned int> dist(0, UINT_MAX);
     std::random_device urandom("/dev/urandom");
     srand(dist(urandom));
@@ -312,13 +320,8 @@ void pdte(std::string inCipherPath, std::string outCipherPath, std::string encKe
     for (int i = 0; i < 16; ++i){
         stringstream s;
         s << rotKeyPath << constants::R[i] << ".key";
-        std::cout << s.str() << std::endl;
         scheme.leftRotKeyMap.insert(std::pair<long, Key*>(constants::R[i], SerializationUtils::readKey(s.str())));
     }
-    for (auto it = scheme.leftRotKeyMap.begin(); it != scheme.leftRotKeyMap.end(); it++) {
-        std::cout << "(" << it->first << ", " << it->second->rax[0] << ")" << std::endl;
-    }
-
 
     Ciphertext ones, c1, c2;
     scheme.encrypt(ones, data, constants::NN, constants::LOGP, constants::LOGQ);
@@ -332,6 +335,81 @@ void pdte(std::string inCipherPath, std::string outCipherPath, std::string encKe
     scheme.multAndEqual(c1, c2);
     scheme.reScaleByAndEqual(c1, constants::LOGP);
 
+    SerializationUtils::writeCiphertext(c1, outCipherPath);
+
+    delete[] data;
+}
+
+void pdte(std::vector<double> featureValues, std::string inCipherPath, std::string outCipherPath, std::string encKeyPath, std::string multKeyPath, std::string rotKeyPath) {
+    std::uniform_int_distribution<unsigned int> dist(0, UINT_MAX);
+    std::random_device urandom("/dev/urandom");
+    srand(dist(urandom));
+    SetNumThreads(constants::NUM_THREADS);
+    // Need both encryption key and multiplication key
+    Ring ring;
+    Key* encKey = SerializationUtils::readKey(encKeyPath);
+    Key* multKey = SerializationUtils::readKey(multKeyPath);
+    Scheme scheme(ring, encKey, multKey);
+
+    // Cannot declare default ciphertext and then try to assign like:
+    // Ciphertext x1;
+    // x1 = SerializationUtils::readCiphertext(ciphertextPath);
+    // ^^^^^ BAD!!!! ^^^^^^
+    // Have to do this in one line or it will seg fault
+    Ciphertext* inCtxt = SerializationUtils::readCiphertext(inCipherPath);
+    Ciphertext x, f4x;
+    // x contains the threshold value (a)
+    x.copy(*inCtxt);
+    // f4x temporarily stores the features values (b)
+    scheme.encrypt(f4x, featureValues.data(), constants::NN, constants::LOGP, constants::LOGQ);
+    
+    // x = a - b
+    scheme.subAndEqual(x, f4x);
+    // x = g_4(x), d_g  times
+    for (int i = 0; i < constants::D_G; ++i) {
+        g4(scheme, f4x, x, constants::LOGP);
+        x.copy(f4x);
+        f4x.free();
+    }
+    // x = f_4(x), d_f  times
+    for (int i = 0; i < constants::D_F; ++i) {
+        f4(scheme, f4x, x, constants::LOGP);
+        x.copy(f4x);
+        f4x.free();
+    }
+    
+    // return (x + 1) / 2
+    scheme.addConstAndEqual(x, 1.0, constants::LOGP);
+    scheme.multByConstAndEqual(x, 0.5, constants::LOGP);
+    scheme.reScaleByAndEqual(x, constants::LOGP);
+
+    double* data = new double[constants::SLOTS];
+    for (int i = 0; i < constants::SLOTS / 64; ++i) {
+        for (int j = 0; j < 16; ++j) {
+            data[(i*64) + (j*4) + 0] = (j >> 3) & 1;
+            data[(i*64) + (j*4) + 1] = (j >> 2) & 1;
+            data[(i*64) + (j*4) + 2] = (j >> 1) & 1;
+            data[(i*64) + (j*4) + 3] = (j >> 0) & 1;
+        }
+    }
+    for (int i = 0; i < 16; ++i){
+        stringstream s;
+        s << rotKeyPath << constants::R[i] << ".key";
+        scheme.leftRotKeyMap.insert(std::pair<long, Key*>(constants::R[i], SerializationUtils::readKey(s.str())));
+    }
+    Ciphertext ones, c1, c2;
+    scheme.encrypt(ones, data, constants::NN, constants::LOGP, constants::LOGQ);
+    scheme.modDownByAndEqual(ones, 1040);
+    scheme.sub(x, ones, x);
+
+    c1.copy(x);
+    scheme.rightRotateFastAndEqual(x, 1);
+    scheme.multAndEqual(c1, x);
+    scheme.reScaleByAndEqual(c1, constants::LOGP);
+    c2.copy(c1);
+    scheme.rightRotateFastAndEqual(c2, 2);
+    scheme.multAndEqual(c1, c2);
+    scheme.reScaleByAndEqual(c1, constants::LOGP);
     SerializationUtils::writeCiphertext(c1, outCipherPath);
 
     delete[] data;
