@@ -23,7 +23,7 @@ namespace constants {
     // Parameters for HEAAN //
     const long CIRCUIT_DEPTH = 5;
     const long LOGP = 40; ///< scaling factor log ∆
-    const long LOGQ = ((LOGP * CIRCUIT_DEPTH) * (D_F + D_G) + LOGP + 10) + (LOGP * 3); ///< Ciphertext modulus
+    const long LOGQ = ((LOGP * CIRCUIT_DEPTH) * (D_F + D_G) + LOGP + 10) + (LOGP * 4); ///< Ciphertext modulus
     const long LOGN = 16; ///< number of slots (2^16 = 65536)
     const long NN = 1 << LOGN;
     const long SLOTS = NN;
@@ -333,6 +333,18 @@ void depthFiveMult(std::string inCipherPath, std::string outCipherPath, std::str
     c2.copy(c1);
     scheme.rightRotateFastAndEqual(c2, 2);
     scheme.multAndEqual(c1, c2);
+    scheme.reScaleByAndEqual(c1, constants::LOGP);
+    
+    // Ensure the only data that is left are the results of the tree evaluation
+    delete[] data;
+    data = new double[constants::SLOTS];
+    for (int i = 0; i < constants::SLOTS; i++) {
+            data[i] = (i % 4 == 3) ? 1 : 0; 
+    }
+
+    ones.free();
+    scheme.encrypt(ones, data, constants::NN, constants::LOGP, constants::LOGQ);
+    scheme.multAndEqual(c1, ones);
     scheme.reScaleByAndEqual(c1, constants::LOGP);
 
     SerializationUtils::writeCiphertext(c1, outCipherPath);

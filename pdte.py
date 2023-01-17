@@ -122,9 +122,14 @@ def encodeLabels(labels):
 
     return leafValues
 
+# This code would be executed by the party with the model (tree)
 seccomp.keygen("keys/secret.key", "keys/mult.key", "keys/enc.key", "keys/rot/")
 seccomp.encryptMany(encodeTree(tree), "keys/enc.key", "ciphertexts/tree.ctxt")
+
+# This code would be executed on the party with the data (features)
 seccomp.pdte(encodeFeatures(data), "ciphertexts/tree.ctxt", "ciphertexts/pdte.ctxt", "keys/enc.key", "keys/mult.key", "keys/rot/")
+
+# This code would be executed again by the party with the model (tree)
 decryptedValues = seccomp.decrypt("ciphertexts/pdte.ctxt", "keys/secret.key")
 extractedResults = extractResults(encodeLabels(labels), decryptedValues)
 
