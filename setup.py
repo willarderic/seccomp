@@ -19,7 +19,7 @@ ext_modules = [
     Extension(
         'seccomp',
         ['seccomp.cpp'],
-        include_dirs=['/usr/include/python3.8', '/home/eric/.local/lib/python3.8/site-packages/pybind11/include', './HEAAN/HEAAN/src'],
+        include_dirs=['/usr/include/python3.8', './ntl/include', '~/.local/lib/python3.8/site-packages/pybind11/include', './HEAAN/HEAAN/src'],
         language='c++',
         extra_compile_args=cpp_args,
         extra_objects=['./ntl/lib/libntl.so', './ntl/lib/libntl.so.44', './HEAAN/HEAAN/lib/libHEAAN.a'], # both lib need compiled with -fPIC
