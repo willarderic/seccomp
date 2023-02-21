@@ -26,12 +26,15 @@ Before installing all the libraries, we need to download everything we will need
 ```
 sudo apt install git
 sudo apt install python3
-git clone https://github.com/willarderic/seccomp.git
-cd seccomp
 sudo apt install python3-pip
 sudo apt-get install python3-distutils
 sudo apt-get install m4
 pip3 install pytest
+```
+Clone and enter the directory
+```
+git clone https://github.com/willarderic/seccomp.git
+cd seccomp
 ```
 ## Install pybind11
 ```
