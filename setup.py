@@ -8,21 +8,18 @@ for key, value in cfg_vars.items():
 
 cpp_args = ['-std=c++11']
 
-#g++ -shared test.cpp /home/eric/Projects/research/HEAAN/HEAAN/lib/libHEAAN.a /usr/local/lib/libntl.so -o comparison.cpython-38-x86_64-linux-gnu.so  -fPIC -std=c++11 -O2 -I/home/eric/Projects/research/HEAAN/HEAAN/src -I/usr/include/python3.8 -I/home/eric/.local/lib/python3.8/site-packages/pybind11/include
-
 # !!!!!!!!!!!!!
 # !! NEED TO SET LD_LIBRARY_PATH=/usr/local/lib
 # !! FOR IMPORTING TO WORK AFTER COMPILATION
-# HAVE TO COMPILE NTL WITH -fPIC, or set SHARED=ON for the ./configure script
 
 ext_modules = [
     Extension(
         'seccomp',
         ['seccomp.cpp'],
-        include_dirs=['/usr/include/python3.8', './ntl/include', '~/.local/lib/python3.8/site-packages/pybind11/include', './HEAAN/HEAAN/src'],
+        include_dirs=['./ntl/include', './HEAAN/HEAAN/src'],
         language='c++',
         extra_compile_args=cpp_args,
-        extra_objects=['./ntl/lib/libntl.so', './ntl/lib/libntl.so.44', './HEAAN/HEAAN/lib/libHEAAN.a'], # both lib need compiled with -fPIC
+        extra_objects=['/usr/local/lib/libntl.so.44', '/usr/local/lib/libntl.so', './HEAAN/HEAAN/lib/libHEAAN.a'], # both lib need compiled with -fPIC
         extra_link_args=['-Wl,-rpath,$ORIGIN' ],
     ),
 ]
