@@ -2,12 +2,12 @@ import seccomp
 
 tree = [
                 0.5,
-            0.25,    0.75,
-        0.125, 0.375, 0.625, 0.875,
-    0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9
+            0.5,    0.5,
+        0.5, 0.5, 0.5, 0.5,
+    0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5
 ]
 
-data = [0.05, 0.11, 0.14, 0.24, 0.27, 0.35, 0.39, 0.45, 0.55, 0.61, 0.67, 0.73, 0.76, 0.84, 0.89, 0.95]
+data = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]
 
 labels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
 
@@ -100,16 +100,72 @@ def encodeTree(tree):
     return thresholds
 
 def encodeFeatures(data):
-    if len(data) > 1024:
-        print("Max number of features is 1024.")
-        exit(1)
-
-    features = [0] * (2 ** 16)
-    for i in range(len(data)):
-        for j in range(64):
-            features[i * 64 + j] = data[i]
-    
-    return features
+    encodedData = [0] * (2 ** 16)
+    for i in range(2**16 // 64):
+        encodedData[i * 64 +  0] = data[0]
+        encodedData[i * 64 +  1] = data[1]
+        encodedData[i * 64 +  2] = data[3]
+        encodedData[i * 64 +  3] = data[7]
+        encodedData[i * 64 +  4] = data[0]
+        encodedData[i * 64 +  5] = data[1]
+        encodedData[i * 64 +  6] = data[3]
+        encodedData[i * 64 +  7] = data[7]
+        encodedData[i * 64 +  8] = data[0]
+        encodedData[i * 64 +  9] = data[1]
+        encodedData[i * 64 + 10] = data[3]
+        encodedData[i * 64 + 11] = data[8]
+        encodedData[i * 64 + 12] = data[0]
+        encodedData[i * 64 + 13] = data[1]
+        encodedData[i * 64 + 14] = data[3]
+        encodedData[i * 64 + 15] = data[8]
+        encodedData[i * 64 + 16] = data[0]
+        encodedData[i * 64 + 17] = data[1]
+        encodedData[i * 64 + 18] = data[4]
+        encodedData[i * 64 + 19] = data[9]
+        encodedData[i * 64 + 20] = data[0]
+        encodedData[i * 64 + 21] = data[1]
+        encodedData[i * 64 + 22] = data[4]
+        encodedData[i * 64 + 23] = data[9]
+        encodedData[i * 64 + 24] = data[0]
+        encodedData[i * 64 + 25] = data[1]
+        encodedData[i * 64 + 26] = data[4]
+        encodedData[i * 64 + 27] = data[10]
+        encodedData[i * 64 + 28] = data[0]
+        encodedData[i * 64 + 29] = data[1]
+        encodedData[i * 64 + 30] = data[4]
+        encodedData[i * 64 + 31] = data[10]
+        encodedData[i * 64 + 32] = data[0]
+        encodedData[i * 64 + 33] = data[2]
+        encodedData[i * 64 + 34] = data[5]
+        encodedData[i * 64 + 35] = data[11]
+        encodedData[i * 64 + 36] = data[0]
+        encodedData[i * 64 + 37] = data[2]
+        encodedData[i * 64 + 38] = data[5]
+        encodedData[i * 64 + 39] = data[11]
+        encodedData[i * 64 + 40] = data[0]
+        encodedData[i * 64 + 41] = data[2]
+        encodedData[i * 64 + 42] = data[5]
+        encodedData[i * 64 + 43] = data[12]
+        encodedData[i * 64 + 44] = data[0]
+        encodedData[i * 64 + 45] = data[2]
+        encodedData[i * 64 + 46] = data[5]
+        encodedData[i * 64 + 47] = data[12]
+        encodedData[i * 64 + 48] = data[0]
+        encodedData[i * 64 + 49] = data[2]
+        encodedData[i * 64 + 50] = data[6]
+        encodedData[i * 64 + 51] = data[13]
+        encodedData[i * 64 + 52] = data[0]
+        encodedData[i * 64 + 53] = data[2]
+        encodedData[i * 64 + 54] = data[6]
+        encodedData[i * 64 + 55] = data[13]
+        encodedData[i * 64 + 56] = data[0]
+        encodedData[i * 64 + 57] = data[2]
+        encodedData[i * 64 + 58] = data[6]
+        encodedData[i * 64 + 59] = data[14]
+        encodedData[i * 64 + 60] = data[0]
+        encodedData[i * 64 + 61] = data[2]
+        encodedData[i * 64 + 62] = data[6]
+        encodedData[i * 64 + 63] = data[14]
 
 def encodeLabels(labels):
     if len(labels) != 16:
